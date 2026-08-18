@@ -29,7 +29,7 @@ def download_video(url: str):
     if os.path.exists('video.mp4'):
         os.remove('video.mp4')
 
-    # Agarhavola Instagram'niki bo'lsa, maxsus API orqali tortib olamiz
+    # Instagram uchun maxsus API
     if "instagram.com" in url:
         try:
             api_url = f"https://apis.davidcyriltech.my.id/instagram?url={url}"
@@ -44,7 +44,7 @@ def download_video(url: str):
         except Exception as e:
             print(f"Instagram API xatosi: {e}")
 
-    # TikTok, YouTube va boshqalar uchun yt-dlp ishlatamiz
+    # TikTok, YouTube va boshqalar uchun yt-dlp
     ydl_opts = {
         'format': 'best',
         'outtmpl': 'video.mp4',
@@ -62,21 +62,21 @@ def download_video(url: str):
         
     return None
 
-# Pastki menyu: Tilni o'zgartirish va Statistika yonma-yon
+# Pastki menyu: Chiroyli va tartibli tugmalar
 def get_reply_menu(user_id, lang='uz'):
     builder = ReplyKeyboardBuilder()
     if lang == 'uz':
-        builder.button(text="🇺🇿 / 🇷🇺 Tilni o'zgartirish")
+        builder.button(text="🌐 Tilni o'zgartirish")
         if user_id == ADMIN_ID:
             builder.button(text="📊 Statistika")
     else:
-        builder.button(text="🇺🇿 / 🇷🇺 Изменить язык")
+        builder.button(text="🌐 Изменить язык")
         if user_id == ADMIN_ID:
             builder.button(text="📊 Статистика")
     builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)
 
-# /start komandasi - Til tanlash chiqadi
+# /start komandasi
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
     add_user(message.from_user.id)
@@ -87,8 +87,10 @@ async def start_cmd(message: types.Message):
     builder.adjust(2)
     
     await message.answer(
-        "Salom! Botimizga xush kelibsiz.\nIltimos, tilni tanlang:\n\n"
-        "Привет! Доброловать.\nПожалуйста, выберите язык:",
+        "👋 **Assalomu alaykum! Botimizga xush kelibsiz.**\n"
+        "Iltimos, muloqot tilini tanlang:\n\n"
+        "👋 **Здравствуйте! Доброловать.**\n"
+        "Пожалуйста, выберите язык:",
         reply_markup=builder.as_markup()
     )
 
@@ -102,9 +104,9 @@ async def set_language(callback: types.CallbackQuery):
     conn.commit()
     
     if lang == "uz":
-        text = "✅ Til O'zbek tiliga o'zgartirildi!\nMenga TikTok, Instagram yoki YouTube havolasini yuboring:"
+        text = "✅ **Til muvaffaqiyatli o'zgartirildi!**\n\n📥 Menga TikTok, Instagram yoki YouTube havolasini yuboring:"
     else:
-        text = "✅ Язык изменен на Русский!\nОтправьте мне ссылку на TikTok, Instagram или YouTube:"
+        text = "✅ **Язык успешно изменен!**\n\n📥 Отправьте мне ссылку на TikTok, Instagram или YouTube:"
 
     await callback.message.answer(text, reply_markup=get_reply_menu(user_id, lang))
     try:
@@ -112,8 +114,8 @@ async def set_language(callback: types.CallbackQuery):
     except Exception:
         pass
 
-# Pastdagi "Tilni o'zgartirish" tugmasi
-@dp.message(F.text.in_(["🇺🇿 / 🇷🇺 Tilni o'zgartirish", "🇺🇿 / 🇷🇺 Изменить язык"]))
+# Pastdagi tilni o'zgartirish tugmasi
+@dp.message(F.text.in_(["🌐 Tilni o'zgartirish", "🌐 Изменить язык"]))
 async def change_lang_menu(message: types.Message):
     builder = InlineKeyboardBuilder()
     builder.button(text="🇺🇿 O'zbekcha", callback_data="lang_uz")
@@ -134,7 +136,7 @@ async def stats_cmd(message: types.Message):
     cursor.execute("SELECT COUNT(*) FROM users")
     total_users = cursor.fetchone()[0]
     
-    await message.answer(f"📊 **Bot statistikasi:**\n\nJami foydalanuvchilar: {total_users} ta")
+    await message.answer(f"📊 **Bot statistikasi:**\n\n👥 Jami foydalanuvchilar: {total_users} ta")
 
 # Havolalarni qabul qilish va video yuklash
 @dp.message(F.text.startswith("http"))
@@ -147,7 +149,7 @@ async def process_download(message: types.Message):
     res = cursor.fetchone()
     lang = res[0] if res else 'uz'
     
-    wait_text = "⏳ Video yuklab olinmoqda, biroz kuting..." if lang == 'uz' else "⏳ Видео загружается, подождите..."
+    wait_text = "⏳ **Video yuklab olinmoqda, biroz kuting...**" if lang == 'uz' else "⏳ **Видео загружается, подождите...**"
     sent_msg = await message.answer(wait_text)
     
     loop = asyncio.get_running_loop()
@@ -158,7 +160,7 @@ async def process_download(message: types.Message):
             await message.answer_video(types.FSInputFile(file_path))
             await sent_msg.delete()
         except Exception as e:
-            await message.answer(f"Xatolik: {e}")
+            await message.answer(f"❌ Xatolik: {e}")
         finally:
             if os.path.exists(file_path):
                 os.remove(file_path)
