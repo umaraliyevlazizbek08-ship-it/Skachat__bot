@@ -8,7 +8,7 @@ from yt_dlp import YoutubeDL
 from aiohttp import web
 
 TOKEN = "8821143666:AAGSe71SdwgQhip6n-B_u8pJdQxTmHCkkNk"
-ADMIN_ID = 6870023412  # Bu yerga o'zingizning aniq ID raqamingizni yozasiz
+ADMIN_ID = 6870023412  # Sizning ID raqamingiz
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -40,17 +40,21 @@ def get_lang_keyboard():
     builder.adjust(2)
     return builder.as_markup()
 
-# Asosiy menyu (Admin uchun Statistika qo'shilgan)
+# Asosiy menyu (Admin uchun Statistika va Tilni o'zgartirish yonma-yon)
 def get_main_menu(lang, user_id):
     builder = ReplyKeyboardBuilder()
     if lang == "ru":
-        builder.button(text="🌐 Сменить язык")
         if user_id == ADMIN_ID:
+            builder.button(text="🌐 Сменить язык")
             builder.button(text="📊 Статистика")
+        else:
+            builder.button(text="🌐 Сменить язык")
     else:
-        builder.button(text="🌐 Tilni o'zgartirish")
         if user_id == ADMIN_ID:
+            builder.button(text="🌐 Tilni o'zgartirish")
             builder.button(text="📊 Statistika")
+        else:
+            builder.button(text="🌐 Tilni o'zgartirish")
     builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)
 
@@ -62,10 +66,6 @@ async def start_cmd(message: types.Message):
     cursor.execute("INSERT OR IGNORE INTO users (user_id, lang) VALUES (?, 'uz')", (user_id,))
     conn.commit()
     
-    cursor.execute("SELECT lang FROM users WHERE user_id = ?", (user_id,))
-    row = cursor.fetchone()
-    lang = row[0] if row else "uz"
-
     welcome_text = "Iltimos, tilni tanlang / Пожалуйста, выберите язык:"
     await message.answer(welcome_text, reply_markup=get_lang_keyboard())
 
