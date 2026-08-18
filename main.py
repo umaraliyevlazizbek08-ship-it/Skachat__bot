@@ -8,7 +8,7 @@ from yt_dlp import YoutubeDL
 from aiohttp import web
 
 TOKEN = "8821143666:AAGKJHoSVng8svXMMHzDgO5NZlIBMitAnDs"
-ADMIN_ID = ID: 8691162431
+ADMIN_ID = 8691162431
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
