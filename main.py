@@ -7,8 +7,8 @@ from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from yt_dlp import YoutubeDL
 from aiohttp import web
 
-TOKEN = "TOKENINGIZNI_SHU_YERGA_YOZING"
-ADMIN_ID = ID_RAQAMINGIZNI_SHU_YERGA_YOZING  # Masalan: 123456789
+TOKEN = "8821143666:AAGSe71SdwgQhip6n-B_u8pJdQxTmHCkkNk"
+ADMIN_ID = 6870023412
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
