@@ -8,7 +8,7 @@ from yt_dlp import YoutubeDL
 from aiohttp import web
 
 TOKEN = "8821143666:AAGSe71SdwgQhip6n-B_u8pJdQxTmHCkkNk"
-ADMIN_ID = 6870023412
+ADMIN_ID = 6870023412  # Bu yerga o'zingizning aniq ID raqamingizni yozasiz
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -59,11 +59,9 @@ def get_main_menu(lang, user_id):
 async def start_cmd(message: types.Message):
     user_id = message.from_user.id
     
-    # Foydalanuvchini bazaga qo'shish yoki tekshirish
     cursor.execute("INSERT OR IGNORE INTO users (user_id, lang) VALUES (?, 'uz')", (user_id,))
     conn.commit()
     
-    # Bazadan uning tilini olish
     cursor.execute("SELECT lang FROM users WHERE user_id = ?", (user_id,))
     row = cursor.fetchone()
     lang = row[0] if row else "uz"
@@ -106,7 +104,6 @@ async def show_stats(message: types.Message):
 # Videolarni yuklab olish
 @dp.message()
 async def download_video(message: types.Message):
-    # Agar xabar menyu tugmalaridan biri bo'lsa, uni o'tkazib yuborish
     if message.text in ["🌐 Tilni o'zgartirish", "🌐 Сменить язык", "📊 Statistika", "📊 Статистика"]:
         return
 
