@@ -7,7 +7,7 @@ from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from yt_dlp import YoutubeDL
 from aiohttp import web
 
-TOKEN = "8821143666:AAHsRDIvy6blV-0GVH2iL03D_NcGlaN2NQY"
+TOKEN = "8821143666:AAHsRDIvy6b1V-0GVH2il03D_NcG1aN2NQY"
 ADMIN_ID = 8691162431
 
 bot = Bot(token=TOKEN)
@@ -91,23 +91,15 @@ async def show_stats(message: types.Message):
     count = cursor.fetchone()[0]
     await message.answer(f"📊 **Bot statistikasi:**\n\nFoydalanuvchilar soni: **{count}** ta")
 
-# Videolarni yuklab olish funksiyasi
-@dp.message()
+# Videolarni yuklab olish funksiyasi (Faqat havolalarni ushlash uchun filtr qo'shildi)
+@dp.message(F.text.startswith("http"))
 async def download_video(message: types.Message):
-    if message.text in ["🌐 Tilni o'zgartirish", "🌐 Сменить язык", "📊 Statistika", "📊 Статистика"]:
-        return
-
     url = message.text.strip()
     user_id = message.from_user.id
     
     cursor.execute("SELECT lang FROM users WHERE user_id = ?", (user_id,))
     row = cursor.fetchone()
     lang = row[0] if row else "uz"
-
-    if not url.startswith("http"):
-        msg = "Iltimos, to'g'ri video havolasini yuboring!" if lang == "uz" else "Пожалуйста, отправьте корректную ссылку!"
-        await message.answer(msg)
-        return
 
     wait_msg = "Video yuklanmoqda, kuting..." if lang == "uz" else "Видео загружается, подождите..."
     status_msg = await message.answer(wait_msg)
@@ -117,11 +109,6 @@ async def download_video(message: types.Message):
         'outtmpl': 'video.%(ext)s',
         'quiet': True,
         'no_warnings': True,
-        'extractor_args': {
-            'instagram': {
-                'max_comments': [0]
-            }
-        },
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
