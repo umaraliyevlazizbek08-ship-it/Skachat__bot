@@ -2,13 +2,13 @@ import os
 import asyncio
 import sqlite3
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from yt_dlp import YoutubeDL
 from aiohttp import web
 
 TOKEN = "8821143666:AAGSe71SdwgQhip6n-B_u8pJdQxTmHCkkNk"
-ADMIN_ID = 6870023412  # Sizning Telegram ID raqamingiz
+ADMIN_ID = 6870023412
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -19,7 +19,7 @@ cursor = conn.cursor()
 cursor.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, lang TEXT DEFAULT 'uz')")
 conn.commit()
 
-# Web server (Render faol turishi uchun)
+# Web server
 async def handle(request):
     return web.Response(text="Bot ishlayapti!")
 
@@ -40,17 +40,13 @@ def get_lang_keyboard():
     builder.adjust(2)
     return builder.as_markup()
 
-def get_main_menu(lang, user_id):
+def get_main_menu(lang):
     builder = ReplyKeyboardBuilder()
     if lang == "ru":
         builder.button(text="🌐 Сменить язык")
-        if user_id == ADMIN_ID:
-            builder.button(text="📊 Статистика")
     else:
         builder.button(text="🌐 Tilni o'zgartirish")
-        if user_id == ADMIN_ID:
-            builder.button(text="📊 Statistika")
-    builder.adjust(2)
+    builder.adjust(1)
     return builder.as_markup(resize_keyboard=True)
 
 # Handlar
@@ -71,19 +67,20 @@ async def set_language(call: types.CallbackQuery):
     
     await call.message.delete()
     msg = "Til muvaffaqiyatli tanlandi! Video havolasini yuboring." if lang == "uz" else "Язык успешно изменен! Отправьте ссылку на видео."
-    await call.message.answer(msg, reply_markup=get_main_menu(lang, user_id))
+    await call.message.answer(msg, reply_markup=get_main_menu(lang))
 
 @dp.message(F.text.in_(["🌐 Tilni o'zgartirish", "🌐 Сменить язык"]))
 async def change_lang(message: types.Message):
     await message.answer("Iltimos, tilni tanlang / Пожалуйста, выберите язык:", reply_markup=get_lang_keyboard())
 
-@dp.message(F.text.in_(["📊 Statistika", "📊 Статистика", "/stat"]))
+# STATISTIKA COMMANDASI (Maxfiy: faqat sizga javob beradi)
+@dp.message(Command("stat"))
+@dp.message(F.text == "📊 Statistika")
 async def show_stats(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    cursor.execute("SELECT COUNT(*) FROM users")
-    count = cursor.fetchone()[0]
-    await message.answer(f"📊 **Bot statistikasi:**\n\nFoydalanuvchilar soni: **{count}** ta")
+    if message.from_user.id == ADMIN_ID:
+        cursor.execute("SELECT COUNT(*) FROM users")
+        count = cursor.fetchone()[0]
+        await message.answer(f"📊 **Bot statistikasi:**\n\nFoydalanuvchilar soni: **{count}** ta")
 
 @dp.message()
 async def download_video(message: types.Message):
