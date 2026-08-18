@@ -121,8 +121,7 @@ async def download_video(message: types.Message):
 
     wait_msg = "Video yuklanmoqda, kuting..." if lang == "uz" else "Видео загружается, подождите..."
     status_msg = await message.answer(wait_msg)
-    
-   ydl_opts = {
+    ydl_opts = {
         'format': 'best',
         'outtmpl': 'video.%(ext)s',
         'quiet': True,
