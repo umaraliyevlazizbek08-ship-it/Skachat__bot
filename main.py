@@ -8,7 +8,7 @@ from yt_dlp import YoutubeDL
 from aiohttp import web
 
 TOKEN = "8821143666:AAG7bP7r4PJQ9Dq25kriFoXbkpWLfSO-Q7Q"
-ADMIN_ID = 8691162431  # Sizning ID raqamingiz
+ADMIN_ID = 8691162431
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -40,7 +40,7 @@ def get_lang_keyboard():
     builder.adjust(2)
     return builder.as_markup()
 
-# Asosiy menyu (Admin uchun Statistika va Tilni o'zgartirish yonma-yon)
+# Asosiy menyu
 def get_main_menu(lang, user_id):
     builder = ReplyKeyboardBuilder()
     if lang == "ru":
@@ -62,10 +62,8 @@ def get_main_menu(lang, user_id):
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
     user_id = message.from_user.id
-    
     cursor.execute("INSERT OR IGNORE INTO users (user_id, lang) VALUES (?, 'uz')", (user_id,))
     conn.commit()
-    
     welcome_text = "Iltimos, tilni tanlang / Пожалуйста, выберите язык:"
     await message.answer(welcome_text, reply_markup=get_lang_keyboard())
 
@@ -74,15 +72,12 @@ async def start_cmd(message: types.Message):
 async def set_language(call: types.CallbackQuery):
     lang = call.data.split("_")[1]
     user_id = call.from_user.id
-    
     cursor.execute("UPDATE users SET lang = ? WHERE user_id = ?", (lang, user_id))
     conn.commit()
-    
     try:
         await call.message.delete()
     except Exception:
         pass
-
     msg = "Til muvaffaqiyatli tanlandi! Video havolasini yuboring." if lang == "uz" else "Язык успешно изменен! Отправьте ссылку на видео."
     await call.message.answer(msg, reply_markup=get_main_menu(lang, user_id))
 
@@ -121,6 +116,7 @@ async def download_video(message: types.Message):
 
     wait_msg = "Video yuklanmoqda, kuting..." if lang == "uz" else "Видео загружается, подождите..."
     status_msg = await message.answer(wait_msg)
+    
     ydl_opts = {
         'format': 'best',
         'outtmpl': 'video.%(ext)s',
@@ -144,11 +140,17 @@ async def download_video(message: types.Message):
             os.remove(filename)
         else:
             await message.answer("Xatolik yuz berdi." if lang == "uz" else "Произошла ошибка.")
-    except Exception:
-        err_msg = "Kechirasiz, bu videoni yuklab bo'lmadi." if lang == "uz" else "Извините, не удалось скачать видео."
+    except Exception as e:
+        if "Instagram" in str(e) or "login required" in str(e):
+            err_msg = "Instagram hozircha bu havolani blokladi. Iltimos, YouTube yoki TikTok havolasini yuboring." if lang == "uz" else "Instagram заблокировал эту ссылку. Пожалуйста, отправьте ссылку на YouTube или TikTok."
+        else:
+            err_msg = "Kechirasiz, bu videoni yuklab bo'lmadi." if lang == "uz" else "Извините, не удалось скачать видео."
         await message.answer(err_msg)
     finally:
-        await status_msg.delete()
+        try:
+            await status_msg.delete()
+        except Exception:
+            pass
 
 async def main():
     await start_web_server()
