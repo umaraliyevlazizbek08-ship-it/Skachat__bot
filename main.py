@@ -30,7 +30,7 @@ async def start_web_server():
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
 
-# --- BOT HANDLERLARI (Javob berish qismi) ---
+# --- BOT HANDLERLARI ---
 
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
