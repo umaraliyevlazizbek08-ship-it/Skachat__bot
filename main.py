@@ -6,7 +6,7 @@ from aiogram.filters import CommandStart
 from yt_dlp import YoutubeDL
 from aiohttp import web
 
-TOKEN = "8905713909:AAHpKWLEPbDyCdG3hhR8ORpQ1UOIXgY0e1M"
+TOKEN = "8821143666:AAGSe71SdwgQhip6n-B_u8pJdQxTmHCkkNk"
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
