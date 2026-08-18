@@ -1,8 +1,9 @@
 import os
 import asyncio
 import sqlite3
-from aiogram import Bot, Dispatcher, types
-from aiogram.filters import CommandStart
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.filters import CommandStart, Command
+from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from yt_dlp import YoutubeDL
 from aiohttp import web
 
@@ -14,7 +15,7 @@ dp = Dispatcher()
 # Bazani ulash
 conn = sqlite3.connect("bot_users.db", check_same_thread=False)
 cursor = conn.cursor()
-cursor.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)")
+cursor.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, lang TEXT DEFAULT 'uz')")
 conn.commit()
 
 # Web server javobi
@@ -30,6 +31,26 @@ async def start_web_server():
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
 
+# --- Klaviaturalar ---
+
+def get_lang_keyboard():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🇺🇿 O'zbekcha", callback_data="lang_uz")
+    builder.button(text="🇷🇺 Русский", callback_data="lang_ru")
+    builder.adjust(2)
+    return builder.as_markup()
+
+def get_main_menu(lang):
+    builder = ReplyKeyboardBuilder()
+    if lang == "ru":
+        builder.button(text="🌐 Сменить язык")
+        builder.button(text="📊 Статистика")
+    else:
+        builder.button(text="🌐 Tilni o'zgartirish")
+        builder.button(text="📊 Statistika")
+    builder.adjust(2)
+    return builder.as_markup(resize_keyboard=True)
+
 # --- BOT HANDLERLARI ---
 
 @dp.message(CommandStart())
@@ -37,16 +58,48 @@ async def start_cmd(message: types.Message):
     user_id = message.from_user.id
     cursor.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
     conn.commit()
-    await message.answer("Assalomu alaykum! Video yuklash uchun link yuboring.")
+    await message.answer("Iltimos, tilni tanlang / Пожалуйста, выберите язык:", reply_markup=get_lang_keyboard())
+
+@dp.callback_query(F.data.startswith("lang_"))
+async def set_language(call: types.CallbackQuery):
+    lang = call.data.split("_")[1]
+    user_id = call.from_user.id
+    
+    cursor.execute("UPDATE users SET lang = ? WHERE user_id = ?", (lang, user_id))
+    conn.commit()
+    
+    await call.message.delete()
+    if lang == "ru":
+        await call.message.answer("Язык успешно изменен! Отправьте ссылку на видео.", reply_markup=get_main_menu("ru"))
+    else:
+        await call.message.answer("Til muvaffaqiyatli tanlandi! Video havolasini yuboring.", reply_markup=get_main_menu("uz"))
+
+@dp.message(F.text.in_(["🌐 Tilni o'zgartirish", "🌐 Сменить язык"]))
+async def change_lang(message: types.Message):
+    await message.answer("Iltimos, tilni tanlang / Пожалуйста, выберите язык:", reply_markup=get_lang_keyboard())
+
+@dp.message(F.text.in_(["📊 Statistika", "📊 Статистика", "/stat"]))
+async def show_stats(message: types.Message):
+    cursor.execute("SELECT COUNT(*) FROM users")
+    count = cursor.fetchone()[0]
+    await message.answer(f"📊 **Bot statistikasi:**\n\nFoydalanuvchilar soni: **{count}** ta")
 
 @dp.message()
 async def download_video(message: types.Message):
     url = message.text.strip()
+    user_id = message.from_user.id
+    
+    cursor.execute("SELECT lang FROM users WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    lang = row[0] if row else "uz"
+
     if not url.startswith("http"):
-        await message.answer("Iltimos, to'g'ri video havolasini (link) yuboring!")
+        msg = "Iltimos, to'g'ri video havolasini yuboring!" if lang == "uz" else "Пожалуйста, отправьте корректную ссылку!"
+        await message.answer(msg)
         return
 
-    status_msg = await message.answer("Video yuklanmoqda, kuting...")
+    wait_msg = "Video yuklanmoqda, kuting..." if lang == "uz" else "Видео загружается, подождите..."
+    status_msg = await message.answer(wait_msg)
     
     ydl_opts = {
         'format': 'best',
@@ -61,13 +114,14 @@ async def download_video(message: types.Message):
         
         if os.path.exists(filename):
             video_file = types.FSInputFile(filename)
-            await message.answer_video(video=video_file, caption="Video yuklandi! 🚀")
+            caption = "Video yuklandi! 🚀" if lang == "uz" else "Видео успешно загружено! 🚀"
+            await message.answer_video(video=video_file, caption=caption)
             os.remove(filename)
         else:
-            await message.answer("Xatolik: Fayl topilmadi.")
+            await message.answer("Xatolik yuz berdi." if lang == "uz" else "Произошла ошибка.")
     except Exception as e:
-        await message.answer("Kechirasiz, bu videoni yuklab bo'lmadi.")
-        print(f"Xato: {e}")
+        err_msg = "Kechirasiz, bu videoni yuklab bo'lmadi." if lang == "uz" else "Извините, не удалось скачать видео."
+        await message.answer(err_msg)
     finally:
         await status_msg.delete()
 
