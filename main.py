@@ -130,14 +130,13 @@ async def change_lang_menu(message: types.Message):
 # Statistika (admin uchun)
 @dp.message(F.text.in_(["📊 Statistika", "📊 Статистика"]))
 async def stats_cmd(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    
     cursor.execute("SELECT COUNT(*) FROM users")
     total_users = cursor.fetchone()[0]
     
-    await message.answer(f"📊 **Bot statistikasi:**\n\n👥 Jami foydalanuvchilar: {total_users} ta")
-
+    if message.from_user.id == ADMIN_ID:
+        await message.answer(f"📊 **Bot statistikasi:**\n\n👥 Jami foydalanuvchilar: {total_users} ta")
+    else:
+        await message.answer(f"📊 Botimizdan hozirda **{total_users}** ta odam foydalanmoqda!")
 # Havolalarni qabul qilish va video yuklash
 @dp.message(F.text.startswith("http"))
 async def process_download(message: types.Message):
