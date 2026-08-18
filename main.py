@@ -59,11 +59,17 @@ def get_main_menu(lang, user_id):
 async def start_cmd(message: types.Message):
     user_id = message.from_user.id
     
-    # Foydalanuvchini bazaga qo'shish (agar bo'lmasa)
+    # Foydalanuvchini bazaga qo'shish yoki tekshirish
     cursor.execute("INSERT OR IGNORE INTO users (user_id, lang) VALUES (?, 'uz')", (user_id,))
     conn.commit()
     
-    await message.answer("Iltimos, tilni tanlang / Пожалуйста, выберите язык:", reply_markup=get_lang_keyboard())
+    # Bazadan uning tilini olish
+    cursor.execute("SELECT lang FROM users WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    lang = row[0] if row else "uz"
+
+    welcome_text = "Iltimos, tilni tanlang / Пожалуйста, выберите язык:"
+    await message.answer(welcome_text, reply_markup=get_lang_keyboard())
 
 # Tilni tanlash tugmasi bosilganda
 @dp.callback_query(F.data.startswith("lang_"))
@@ -74,7 +80,11 @@ async def set_language(call: types.CallbackQuery):
     cursor.execute("UPDATE users SET lang = ? WHERE user_id = ?", (lang, user_id))
     conn.commit()
     
-    await call.message.delete()
+    try:
+        await call.message.delete()
+    except Exception:
+        pass
+
     msg = "Til muvaffaqiyatli tanlandi! Video havolasini yuboring." if lang == "uz" else "Язык успешно изменен! Отправьте ссылку на видео."
     await call.message.answer(msg, reply_markup=get_main_menu(lang, user_id))
 
@@ -83,7 +93,7 @@ async def set_language(call: types.CallbackQuery):
 async def change_lang(message: types.Message):
     await message.answer("Iltimos, tilni tanlang / Пожалуйста, выберите язык:", reply_markup=get_lang_keyboard())
 
-# Statistika tugmasi yoki /stat komandasi (Faqat admin uchun)
+# Statistika komandasi yoki tugmasi
 @dp.message(Command("stat"))
 @dp.message(F.text.in_(["📊 Statistika", "📊 Статистика"]))
 async def show_stats(message: types.Message):
@@ -96,6 +106,10 @@ async def show_stats(message: types.Message):
 # Videolarni yuklab olish
 @dp.message()
 async def download_video(message: types.Message):
+    # Agar xabar menyu tugmalaridan biri bo'lsa, uni o'tkazib yuborish
+    if message.text in ["🌐 Tilni o'zgartirish", "🌐 Сменить язык", "📊 Statistika", "📊 Статистика"]:
+        return
+
     url = message.text.strip()
     user_id = message.from_user.id
     
