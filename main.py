@@ -7,7 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from yt_dlp import YoutubeDL
 from aiohttp import web
 
-TOKEN = "8821143666:AAG4_5NpmuCKBLJynWkYzy-sj7m1qTVv49Y"
+TOKEN = "8821143666:AAH7dxU0EpEK-w3FuVIGQDtYuRMNecCF1sU"
 ADMIN_ID = 8691162431
 
 bot = Bot(token=TOKEN)
