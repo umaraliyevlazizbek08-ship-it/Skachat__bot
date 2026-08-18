@@ -7,7 +7,7 @@ from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from yt_dlp import YoutubeDL
 from aiohttp import web
 
-TOKEN = "8821143666:AAGSe71SdwgQhip6n-B_u8pJdQxTmHCkkNk"
+TOKEN = "8821143666:AAGuRV7zDoI1xC51p_od8JSMkSuAigxlIuo"
 ADMIN_ID = 8691162431  # Sizning ID raqamingiz
 
 bot = Bot(token=TOKEN)
