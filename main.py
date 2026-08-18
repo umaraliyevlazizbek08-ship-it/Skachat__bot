@@ -13,13 +13,13 @@ ADMIN_ID = 8691162431
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Bazani ulash va sozlash
+# Ma'lumotlar bazasini ulash
 conn = sqlite3.connect("bot_users.db", check_same_thread=False)
 cursor = conn.cursor()
 cursor.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, lang TEXT DEFAULT 'uz')")
 conn.commit()
 
-# Web server (Render uchun)
+# Render uchun veb-server
 async def handle(request):
     return web.Response(text="Bot ishlayapti!")
 
@@ -32,7 +32,7 @@ async def start_web_server():
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
 
-# Til tanlash uchun inline tugmalar
+# Til tanlash uchun tugmalar
 def get_lang_keyboard():
     builder = InlineKeyboardBuilder()
     builder.button(text="🇺🇿 O'zbekcha", callback_data="lang_uz")
@@ -40,21 +40,17 @@ def get_lang_keyboard():
     builder.adjust(2)
     return builder.as_markup()
 
-# Asosiy menyu
+# Asosiy menyu tugmalari
 def get_main_menu(lang, user_id):
     builder = ReplyKeyboardBuilder()
     if lang == "ru":
+        builder.button(text="🌐 Сменить язык")
         if user_id == ADMIN_ID:
-            builder.button(text="🌐 Сменить язык")
             builder.button(text="📊 Статистика")
-        else:
-            builder.button(text="🌐 Сменить язык")
     else:
+        builder.button(text="🌐 Tilni o'zgartirish")
         if user_id == ADMIN_ID:
-            builder.button(text="🌐 Tilni o'zgartirish")
             builder.button(text="📊 Statistika")
-        else:
-            builder.button(text="🌐 Tilni o'zgartirish")
     builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)
 
@@ -64,10 +60,9 @@ async def start_cmd(message: types.Message):
     user_id = message.from_user.id
     cursor.execute("INSERT OR IGNORE INTO users (user_id, lang) VALUES (?, 'uz')", (user_id,))
     conn.commit()
-    welcome_text = "Iltimos, tilni tanlang / Пожалуйста, выберите язык:"
-    await message.answer(welcome_text, reply_markup=get_lang_keyboard())
+    await message.answer("Iltimos, tilni tanlang / Пожалуйста, выберите язык:", reply_markup=get_lang_keyboard())
 
-# Tilni tanlash tugmasi bosilganda
+# Tilni o'zgartirish callback
 @dp.callback_query(F.data.startswith("lang_"))
 async def set_language(call: types.CallbackQuery):
     lang = call.data.split("_")[1]
@@ -81,12 +76,12 @@ async def set_language(call: types.CallbackQuery):
     msg = "Til muvaffaqiyatli tanlandi! Video havolasini yuboring." if lang == "uz" else "Язык успешно изменен! Отправьте ссылку на видео."
     await call.message.answer(msg, reply_markup=get_main_menu(lang, user_id))
 
-# Tilni o'zgartirish tugmasi bosilganda
+# Menyudan tilni o'zgartirish
 @dp.message(F.text.in_(["🌐 Tilni o'zgartirish", "🌐 Сменить язык"]))
 async def change_lang(message: types.Message):
     await message.answer("Iltimos, tilni tanlang / Пожалуйста, выберите язык:", reply_markup=get_lang_keyboard())
 
-# Statistika komandasi yoki tugmasi
+# Statistika (faqat admin uchun)
 @dp.message(Command("stat"))
 @dp.message(F.text.in_(["📊 Statistika", "📊 Статистика"]))
 async def show_stats(message: types.Message):
@@ -96,7 +91,7 @@ async def show_stats(message: types.Message):
     count = cursor.fetchone()[0]
     await message.answer(f"📊 **Bot statistikasi:**\n\nFoydalanuvchilar soni: **{count}** ta")
 
-# Videolarni yuklab olish
+# Videolarni yuklab olish funksiyasi
 @dp.message()
 async def download_video(message: types.Message):
     if message.text in ["🌐 Tilni o'zgartirish", "🌐 Сменить язык", "📊 Statistika", "📊 Статистика"]:
@@ -122,7 +117,11 @@ async def download_video(message: types.Message):
         'outtmpl': 'video.%(ext)s',
         'quiet': True,
         'no_warnings': True,
-        'extractor_args': {'instagram': {'max_comments': [0]}},
+        'extractor_args': {
+            'instagram': {
+                'max_comments': [0]
+            }
+        },
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
@@ -140,11 +139,8 @@ async def download_video(message: types.Message):
             os.remove(filename)
         else:
             await message.answer("Xatolik yuz berdi." if lang == "uz" else "Произошла ошибка.")
-    except Exception as e:
-        if "Instagram" in str(e) or "login required" in str(e):
-            err_msg = "Instagram hozircha bu havolani blokladi. Iltimos, YouTube yoki TikTok havolasini yuboring." if lang == "uz" else "Instagram заблокировал эту ссылку. Пожалуйста, отправьте ссылку на YouTube или TikTok."
-        else:
-            err_msg = "Kechirasiz, bu videoni yuklab bo'lmadi." if lang == "uz" else "Извините, не удалось скачать видео."
+    except Exception:
+        err_msg = "Kechirasiz, bu videoni yuklab bo'lmadi. Havola ochiq ekanligini tekshiring." if lang == "uz" else "Извините, не удалось скачать видео."
         await message.answer(err_msg)
     finally:
         try:
