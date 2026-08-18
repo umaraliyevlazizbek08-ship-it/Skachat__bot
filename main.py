@@ -8,7 +8,7 @@ from yt_dlp import YoutubeDL
 from aiohttp import web
 
 TOKEN = "8821143666:AAGSe71SdwgQhip6n-B_u8pJdQxTmHCkkNk"
-ADMIN_ID = 6870023412  # Sizning ID raqamingiz
+ADMIN_ID = 8691162431  # Sizning ID raqamingiz
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
