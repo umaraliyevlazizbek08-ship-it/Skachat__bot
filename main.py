@@ -3,7 +3,7 @@ import asyncio
 import sqlite3
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from yt_dlp import YoutubeDL
 from aiohttp import web
 
@@ -45,91 +45,83 @@ def download_video(url: str):
         print(f"Xatolik: {e}")
     return None
 
-# Asosiy menyu (Tilni o'zgartirish tugmasi bilan)
-def get_main_menu(lang='uz'):
-    builder = InlineKeyboardBuilder()
+# Pastki menyu (Klaviaturadagi tugmalar: Tilni o'zgartirish va Statistika faqat admin uchun)
+def get_reply_menu(user_id, lang='uz'):
+    builder = ReplyKeyboardBuilder()
     if lang == 'uz':
-        builder.button(text="🇺🇿 / 🇷🇺 Tilni o'zgartirish", callback_data="change_lang")
+        builder.button(text="🇺🇿 / 🇷🇺 Tilni o'zgartirish")
+        if user_id == ADMIN_ID:
+            builder.button(text="📊 Statistika")
     else:
-        builder.button(text="🇺🇿 / 🇷🇺 Изменить язык", callback_data="change_lang")
-    builder.adjust(1)
-    return builder.as_markup()
+        builder.button(text="🇺🇿 / 🇷🇺 Изменить язык")
+        if user_id == ADMIN_ID:
+            builder.button(text="📊 Статистика")
+    builder.adjust(2)
+    return builder.as_markup(resize_keyboard=True)
 
-# /start komandasi - Til tanlash chiqadi
+# /start komandasi
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
-    add_user(message.from_user.id)
+    user_id = message.from_user.id
+    add_user(user_id)
     
+    cursor.execute("SELECT lang FROM users WHERE user_id = ?", (user_id,))
+    res = cursor.fetchone()
+    lang = res[0] if res else 'uz'
+    
+    if lang == 'uz':
+        text = "Salom! Botimizga xush kelibsiz. Menga TikTok yoki YouTube havolasini yuboring:"
+    else:
+        text = "Привет! Добро пожаловать. Отправьте мне ссылку на TikTok или YouTube:"
+        
+    await message.answer(text, reply_markup=get_reply_menu(user_id, lang))
+
+# Pastdagi "Tilni o'zgartirish" tugmasi bosilganda
+@dp.message(F.text.in_(["🇺🇿 / 🇷🇺 Tilni o'zgartirish", "🇺🇿 / 🇷🇺 Изменить язык"]))
+async def change_lang_handler(message: types.Message):
     builder = InlineKeyboardBuilder()
-    builder.button(text="🇺🇿 O'zbekcha", callback_data="lang_uz")
-    builder.button(text="🇷🇺 Русский", callback_data="lang_ru")
+    builder.button(text="🇺🇿 O'zbekcha", callback_data="setlang_uz")
+    builder.button(text="🇷🇺 Русский", callback_data="setlang_ru")
     builder.adjust(2)
     
-    await message.answer(
-        "Salom! Botimizga xush kelibsiz.\nIltimos, tilni tanlang:\n\n"
-        "Привет! Доброловать.\nПожалуйста, выберите язык:",
-        reply_markup=builder.as_markup()
-    )
+    await message.answer("Iltimos, tilni tanlang:\nПожалуйста, выберите язык:", reply_markup=builder.as_markup())
 
-# Tilni saqlash va asosiy menyuga o'tish (Statistika faqat adminga ko'rinadi)
-@dp.callback_query(F.data.startswith("lang_"))
-async def set_language(callback: types.CallbackQuery):
+# Inline orqali tilni tanlab saqlash
+@dp.callback_query(F.data.startswith("setlang_"))
+async def save_language(callback: types.CallbackQuery):
     lang = callback.data.split("_")[1]
     user_id = callback.from_user.id
     
     cursor.execute("UPDATE users SET lang = ? WHERE user_id = ?", (lang, user_id))
     conn.commit()
     
-    cursor.execute("SELECT COUNT(*) FROM users")
-    total_users = cursor.fetchone()[0]
-    
-    if user_id == ADMIN_ID:
-        if lang == "uz":
-            text = f"✅ Til O'zbek tiliga o'zgartirildi!\n\n📊 Jami foydalanuvchilar: {total_users} ta\nMenga TikTok yoki YouTube havolasini yuboring:"
-        else:
-            text = f"✅ Язык изменен на Русский!\n\n📊 Всего пользователей: {total_users}\nОтправьте мне ссылку на TikTok или YouTube:"
+    if lang == "uz":
+        text = "✅ Til O'zbek tiliga o'zgartirildi!"
     else:
-        if lang == "uz":
-            text = "✅ Til O'zbek tiliga o'zgartirildi!\nMenga TikTok yoki YouTube havolasini yuboring:"
-        else:
-            text = "✅ Язык изменен на Русский!\nОтправьте мне ссылку на TikTok или YouTube:"
+        text = "✅ Язык изменен на Русский!"
+        
+    await callback.message.answer(text, reply_markup=get_reply_menu(user_id, lang))
+    await callback.message.delete()
 
-    try:
-        await callback.message.edit_text(text, reply_markup=get_main_menu(lang))
-    except Exception:
-        await callback.message.answer(text, reply_markup=get_main_menu(lang))
-
-# Tilni o'zgartirish tugmasi bosilganda
-@dp.callback_query(F.data == "change_lang")
-async def change_lang_menu(callback: types.CallbackQuery):
-    builder = InlineKeyboardBuilder()
-    builder.button(text="🇺🇿 O'zbekcha", callback_data="lang_uz")
-    builder.button(text="🇷🇺 Русский", callback_data="lang_ru")
-    builder.adjust(2)
-    
-    await callback.message.edit_text(
-        "Iltimos, tilni tanlang:\nПожалуйста, выберите язык:",
-        reply_markup=builder.as_markup()
-    )
-
-# Admin uchun /stats buyrug'i
-@dp.message(Command("stats"))
-async def stats_cmd(message: types.Message):
+# Pastdagi "Statistika" tugmasi bosilganda (faqat adminga)
+@dp.message(F.text.in_(["📊 Statistika", "📊 Статистика"]))
+async def stats_handler(message: types.Message):
     if message.from_user.id != ADMIN_ID:
-        return await message.answer("Bu buyruq faqat admin uchun!")
-    
+        return
+        
     cursor.execute("SELECT COUNT(*) FROM users")
     total_users = cursor.fetchone()[0]
     
-    await message.answer(f"📊 **Admin statistikasi:**\n\nJami foydalanuvchilar: {total_users} ta")
+    await message.answer(f"📊 **Bot statistikasi:**\n\nJami foydalanuvchilar: {total_users} ta")
 
 # Havolalarni qabul qilish va video yuklash
 @dp.message(F.text.startswith("http"))
 async def process_download(message: types.Message):
-    add_user(message.from_user.id)
+    user_id = message.from_user.id
+    add_user(user_id)
     url = message.text.strip()
     
-    cursor.execute("SELECT lang FROM users WHERE user_id = ?", (message.from_user.id,))
+    cursor.execute("SELECT lang FROM users WHERE user_id = ?", (user_id,))
     res = cursor.fetchone()
     lang = res[0] if res else 'uz'
     
@@ -141,7 +133,7 @@ async def process_download(message: types.Message):
     
     if file_path and os.path.exists(file_path):
         try:
-            await message.answer_video(types.FSInputFile(file_path), reply_markup=get_main_menu(lang))
+            await message.answer_video(types.FSInputFile(file_path))
             await sent_msg.delete()
         except Exception as e:
             await message.answer(f"Xatolik: {e}")
