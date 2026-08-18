@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from yt_dlp import YoutubeDL
-from aiophttp import web
+from aiohttp import web
 
 TOKEN = "8821143666:AAGKJHoSVng8svXMMHzDg05NZlIBMitAnDs"
 ADMIN_ID = 8691162431
@@ -19,7 +19,7 @@ cursor = conn.cursor()
 cursor.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, lang TEXT DEFAULT 'uz')")
 conn.commit()
 
-# Videoni yuklab olish funksiyasi (xatoliklarni oldini olish uchun sozlamalar bilan)
+# Videoni yuklab olish funksiyasi
 def download_video(url: str):
     ydl_opts = {
         'format': 'best',
@@ -29,7 +29,6 @@ def download_video(url: str):
         'geo_bypass': True,
     }
     try:
-        # Eski fayl qolgan bo'lsa o'chiramiz
         if os.path.exists('video.mp4'):
             os.remove('video.mp4')
             
@@ -42,13 +41,17 @@ def download_video(url: str):
         print(f"Yuklashda xatolik: {e}")
     return None
 
-# Xabarlarni qabul qilib video yuborish (Namuna handlers)
+# Start komandasi
+@dp.message(CommandStart())
+async def start_cmd(message: types.Message):
+    await message.answer("Salom! Menga TikTok yoki YouTube havolasini yuboring, men uni yuklab beraman.")
+
+# Havolalarni qabul qilib yuklash
 @dp.message(F.text.startswith("http"))
-process_download(message: types.Message):
+async def process_download(message: types.Message):
     url = message.text.strip()
     sent_msg = await message.answer("⏳ Video yuklab olinmoqda, biroz kuting...")
     
-    # Videoni alohida oqimda (thread) yuklab olamiz
     loop = asyncio.get_running_loop()
     file_path = await loop.run_in_executor(None, download_video, url)
     
@@ -62,7 +65,7 @@ process_download(message: types.Message):
             if os.path.exists(file_path):
                 os.remove(file_path)
     else:
-        await message.answer("❌ Kechirasiz, bu videoni yuklab bo'lmadi. Havola ochiq ekanligini yoki yaroqli ekanligini tekshiring.")
+        await message.answer("❌ Kechirasiz, bu videoni yuklab bo'lmadi. Havola ochiq ekanligini tekshiring.")
         await sent_msg.delete()
 
 # Render uchun veb-server
