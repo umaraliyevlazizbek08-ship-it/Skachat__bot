@@ -19,7 +19,7 @@ cursor = conn.cursor()
 cursor.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, lang TEXT DEFAULT 'uz')")
 conn.commit()
 
-# Web server
+# Web server (Render uchun)
 async def handle(request):
     return web.Response(text="Bot ishlayapti!")
 
@@ -32,7 +32,7 @@ async def start_web_server():
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
 
-# Klaviaturalar
+# Til tanlash uchun inline tugmalar
 def get_lang_keyboard():
     builder = InlineKeyboardBuilder()
     builder.button(text="🇺🇿 O'zbekcha", callback_data="lang_uz")
@@ -40,6 +40,7 @@ def get_lang_keyboard():
     builder.adjust(2)
     return builder.as_markup()
 
+# Asosiy menyu (Admin uchun Statistika qo'shilgan)
 def get_main_menu(lang, user_id):
     builder = ReplyKeyboardBuilder()
     if lang == "ru":
@@ -53,20 +54,18 @@ def get_main_menu(lang, user_id):
     builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)
 
-# Handlar
+# /start komandasi
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
     user_id = message.from_user.id
+    
+    # Foydalanuvchini bazaga qo'shish (agar bo'lmasa)
     cursor.execute("INSERT OR IGNORE INTO users (user_id, lang) VALUES (?, 'uz')", (user_id,))
     conn.commit()
     
-    # Foydalanuvchi tilini aniqlaymiz
-    cursor.execute("SELECT lang FROM users WHERE user_id = ?", (user_id,))
-    row = cursor.fetchone()
-    lang = row[0] if row else "uz"
-    
     await message.answer("Iltimos, tilni tanlang / Пожалуйста, выберите язык:", reply_markup=get_lang_keyboard())
 
+# Tilni tanlash tugmasi bosilganda
 @dp.callback_query(F.data.startswith("lang_"))
 async def set_language(call: types.CallbackQuery):
     lang = call.data.split("_")[1]
@@ -79,10 +78,12 @@ async def set_language(call: types.CallbackQuery):
     msg = "Til muvaffaqiyatli tanlandi! Video havolasini yuboring." if lang == "uz" else "Язык успешно изменен! Отправьте ссылку на видео."
     await call.message.answer(msg, reply_markup=get_main_menu(lang, user_id))
 
+# Tilni o'zgartirish tugmasi bosilganda
 @dp.message(F.text.in_(["🌐 Tilni o'zgartirish", "🌐 Сменить язык"]))
 async def change_lang(message: types.Message):
     await message.answer("Iltimos, tilni tanlang / Пожалуйста, выберите язык:", reply_markup=get_lang_keyboard())
 
+# Statistika tugmasi yoki /stat komandasi (Faqat admin uchun)
 @dp.message(Command("stat"))
 @dp.message(F.text.in_(["📊 Statistika", "📊 Статистика"]))
 async def show_stats(message: types.Message):
@@ -92,6 +93,7 @@ async def show_stats(message: types.Message):
     count = cursor.fetchone()[0]
     await message.answer(f"📊 **Bot statistikasi:**\n\nFoydalanuvchilar soni: **{count}** ta")
 
+# Videolarni yuklab olish
 @dp.message()
 async def download_video(message: types.Message):
     url = message.text.strip()
