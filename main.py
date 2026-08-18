@@ -7,13 +7,13 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from yt_dlp import YoutubeDL
 from aiohttp import web
 
-TOKEN = "8821143666:AAHIV1bqwYZBjyNQne2bi20AjJi4C0Vls50"
+TOKEN = "YANGI_TOKENINGIZNI_SHU_YERGA_YOZING"
 ADMIN_ID = 8691162431
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Ma'lumotlar bazasini ulash va foydalanuvchini qo'shish
+# Ma'lumotlar bazasini ulash
 conn = sqlite3.connect("bot_users.db", check_same_thread=False)
 cursor = conn.cursor()
 cursor.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, lang TEXT DEFAULT 'uz')")
@@ -23,7 +23,7 @@ def add_user(user_id):
     cursor.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
     conn.commit()
 
-# Videoni yuklab olish funksiyasi
+# Videoni yuklab olish
 def download_video(url: str):
     ydl_opts = {
         'format': 'best',
@@ -42,10 +42,10 @@ def download_video(url: str):
         if os.path.exists('video.mp4'):
             return 'video.mp4'
     except Exception as e:
-        print(f"Yuklashda xatolik: {e}")
+        print(f"Xatolik: {e}")
     return None
 
-# Start komandasi va til tanlash menyusi
+# /start komandasi va til tanlash
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
     add_user(message.from_user.id)
@@ -61,7 +61,7 @@ async def start_cmd(message: types.Message):
         reply_markup=builder.as_markup()
     )
 
-# Tilni o'zgartirish tugmalari
+# Tilni saqlash
 @dp.callback_query(F.data.startswith("lang_"))
 async def set_language(callback: types.CallbackQuery):
     lang = callback.data.split("_")[1]
@@ -69,11 +69,11 @@ async def set_language(callback: types.CallbackQuery):
     conn.commit()
     
     if lang == "uz":
-        await callback.message.edit_text("✅ Til O'zbek tiliga o'zgartirildi!\n\nMenga TikTok, YouTube yoki Instagram havolasini yuboring.")
+        await callback.message.edit_text("✅ Til O'zbek tiliga o'zgartirildi!\n\nMenga TikTok, YouTube yoki boshqa havola yuboring.")
     else:
-        await callback.message.edit_text("✅ Язык изменен на Русский!\n\nОтправьте мне ссылку на TikTok, YouTube или Instagram.")
+        await callback.message.edit_text("✅ Язык изменен на Русский!\n\nОтправьте мне ссылку на TikTok, YouTube или другую.")
 
-# Admin uchun statistika komandasi
+# Admin uchun /stats buyrug'i
 @dp.message(Command("stats"))
 async def stats_cmd(message: types.Message):
     if message.from_user.id != ADMIN_ID:
@@ -82,18 +82,14 @@ async def stats_cmd(message: types.Message):
     cursor.execute("SELECT COUNT(*) FROM users")
     total_users = cursor.fetchone()[0]
     
-    await message.answer(f"📊 **Bot statistikasi:**\n\nJami foydalanuvchilar: {parse_int(total_users)} ta")
+    await message.answer(f"📊 **Bot statistikasi:**\n\nJami foydalanuvchilar: {total_users} ta")
 
-def parse_int(val):
-    return val
-
-# Havolalarni qabul qilib yuklash
+# Havolalarni qabul qilish
 @dp.message(F.text.startswith("http"))
 async def process_download(message: types.Message):
     add_user(message.from_user.id)
     url = message.text.strip()
     
-    # Foydalanuvchi tilini aniqlash
     cursor.execute("SELECT lang FROM users WHERE user_id = ?", (message.from_user.id,))
     res = cursor.fetchone()
     lang = res[0] if res else 'uz'
@@ -109,17 +105,16 @@ async def process_download(message: types.Message):
             await message.answer_video(types.FSInputFile(file_path))
             await sent_msg.delete()
         except Exception as e:
-            err_text = f"Videoni yuborishda xatolik: {e}" if lang == 'uz' else f"Ошибка при отправке видео: {e}"
-            await message.answer(err_text)
+            await message.answer(f"Xatolik: {e}")
         finally:
             if os.path.exists(file_path):
                 os.remove(file_path)
     else:
-        err_link = "❌ Kechirasiz, bu videoni yuklab bo'lmadi. Havola ochiq ekanligini tekshiring." if lang == 'uz' else "❌ Извините, не удалось скачать видео. Проверьте ссылку."
+        err_link = "❌ Kechirasiz, bu videoni yuklab bo'lmadi." if lang == 'uz' else "❌ Не удалось скачать видео."
         await message.answer(err_link)
         await sent_msg.delete()
 
-# Render uchun veb-server
+# Veb server (Render uchun)
 async def handle(request):
     return web.Response(text="Bot ishlayapti!")
 
