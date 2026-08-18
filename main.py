@@ -19,7 +19,7 @@ cursor = conn.cursor()
 cursor.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, lang TEXT DEFAULT 'uz')")
 conn.commit()
 
-# Videoni yuklab olish funksiyasi
+# Videoni yuklab olish funksiyasi (Instagram va boshqalar uchun eng barqaror sozlamalar)
 def download_video(url: str):
     ydl_opts = {
         'format': 'best',
@@ -27,6 +27,7 @@ def download_video(url: str):
         'quiet': True,
         'no_warnings': True,
         'geo_bypass': True,
+        'extractor_args': {'instagram': {'max_comments': 0}},
     }
     try:
         if os.path.exists('video.mp4'):
@@ -44,7 +45,7 @@ def download_video(url: str):
 # Start komandasi
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
-    await message.answer("Salom! Menga TikTok yoki YouTube havolasini yuboring, men uni yuklab beraman.")
+    await message.answer("Salom! Menga Instagram, TikTok yoki YouTube havolasini yuboring, men uni yuklab beraman.")
 
 # Havolalarni qabul qilib yuklash
 @dp.message(F.text.startswith("http"))
@@ -65,7 +66,7 @@ async def process_download(message: types.Message):
             if os.path.exists(file_path):
                 os.remove(file_path)
     else:
-        await message.answer("❌ Kechirasiz, bu videoni yuklab bo'lmadi. Havola ochiq ekanligini tekshiring.")
+        await message.answer("❌ Kechirasiz, bu videoni yuklab bo'lmadi. Havola ochiq ekanligini yoki Instagram/YouTube chekloviga tushmaganini tekshiring.")
         await sent_msg.delete()
 
 # Render uchun veb-server
