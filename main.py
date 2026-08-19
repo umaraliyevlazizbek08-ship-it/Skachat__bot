@@ -1,9 +1,8 @@
 import os
 import asyncio
 import sqlite3
-import requests
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import CommandStart, Command
+from aiogram.filters import CommandStart
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from yt_dlp import YoutubeDL
 from aiohttp import web
@@ -24,32 +23,17 @@ def add_user(user_id):
     cursor.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
     conn.commit()
 
-# Instagram va boshqa videolar uchun universal yuklash funksiyasi
+# Videolarni yuklash funksiyasi (yt-dlp orqali Instagram, TikTok, YouTube)
 def download_video(url: str):
     if os.path.exists('video.mp4'):
         os.remove('video.mp4')
 
-    # Instagram uchun maxsus API
-    if "instagram.com" in url:
-        try:
-            api_url = f"https://apis.davidcyriltech.my.id/instagram?url={url}"
-            response = requests.get(api_url, timeout=15).json()
-            if response.get("status") == 200 and response.get("download_url"):
-                video_url = response["download_url"]
-                vid_data = requests.get(video_url, timeout=20)
-                if vid_data.status_code == 200:
-                    with open('video.mp4', 'wb') as f:
-                        f.write(vid_data.content)
-                    return 'video.mp4'
-        except Exception as e:
-            print(f"Instagram API xatosi: {e}")
-
-    # TikTok, YouTube va boshqalar uchun yt-dlp
     ydl_opts = {
         'format': 'best',
         'outtmpl': 'video.mp4',
         'quiet': True,
         'no_warnings': True,
+        'geo_bypass': True,
     }
     try:
         with YoutubeDL(ydl_opts) as ydl:
@@ -62,7 +46,7 @@ def download_video(url: str):
         
     return None
 
-# Pastki menyu: Chiroyli va tartibli tugmalar
+# Pastki menyu
 def get_reply_menu(user_id, lang='uz'):
     builder = ReplyKeyboardBuilder()
     if lang == 'uz':
@@ -89,7 +73,7 @@ async def start_cmd(message: types.Message):
     await message.answer(
         "👋 **Assalomu alaykum! Botimizga xush kelibsiz.**\n"
         "Iltimos, muloqot tilini tanlang:\n\n"
-        "👋 **Здравствуйте! Доброловать.**\n"
+        "👋 **Здравствуйте! Добро пожаловать.**\n"
         "Пожалуйста, выберите язык:",
         reply_markup=builder.as_markup()
     )
@@ -114,7 +98,7 @@ async def set_language(callback: types.CallbackQuery):
     except Exception:
         pass
 
-# Pastdagi tilni o'zgartirish tugmasi
+# Tilni o'zgartirish tugmasi
 @dp.message(F.text.in_(["🌐 Tilni o'zgartirish", "🌐 Изменить язык"]))
 async def change_lang_menu(message: types.Message):
     builder = InlineKeyboardBuilder()
@@ -127,7 +111,7 @@ async def change_lang_menu(message: types.Message):
         reply_markup=builder.as_markup()
     )
 
-# Statistika (admin uchun)
+# Statistika
 @dp.message(F.text.in_(["📊 Statistika", "📊 Статистика"]))
 async def stats_cmd(message: types.Message):
     cursor.execute("SELECT COUNT(*) FROM users")
@@ -137,7 +121,8 @@ async def stats_cmd(message: types.Message):
         await message.answer(f"📊 **Bot statistikasi:**\n\n👥 Jami foydalanuvchilar: {total_users} ta")
     else:
         await message.answer(f"📊 Botimizdan hozirda **{total_users}** ta odam foydalanmoqda!")
-# Havolalarni qabul qilish va video yuklash
+
+# Havolalarni qabul qilish va yuklash
 @dp.message(F.text.startswith("http"))
 async def process_download(message: types.Message):
     user_id = message.from_user.id
@@ -168,9 +153,9 @@ async def process_download(message: types.Message):
         await message.answer(err_link)
         await sent_msg.delete()
 
-# Veb server (Render uchun)
+# Render uchun veb-server qismi
 async def handle(request):
-    return web.Response(text="Bot ishlayapti!")
+    return web.Response(text="Bot ishlayapti va faol!")
 
 async def web_server():
     app = web.Application()
@@ -183,7 +168,7 @@ async def web_server():
 
 async def main():
     await web_server()
-    print("Bot muvaffaqiyatli ishga tushdi...")
+    print("Veb-server va bot muvaffaqiyatli ishga tushdi...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
