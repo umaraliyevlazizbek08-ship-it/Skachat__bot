@@ -28,6 +28,28 @@ def download_video(url: str):
     if os.path.exists('video.mp4'):
         os.remove('video.mp4')
 
+    # 1-usul: Agar Instagram bo'lsa, avval Cobalt API orqali urinib ko'ramiz (HTTP 429 xatoligining oldini oladi)
+    if "instagram.com" in url:
+        try:
+            api_url = "https://api.cobalt.tools/api/json"
+            headers = {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            }
+            payload = {"url": url}
+            response = requests.post(api_url, json=payload, headers=headers, timeout=15).json()
+            
+            if response.get("status") in ["redirect", "stream"]:
+                video_url = response.get("url")
+                vid_data = requests.get(video_url, timeout=20)
+                if vid_data.status_code == 200:
+                    with open('video.mp4', 'wb') as f:
+                        f.write(vid_data.content)
+                    return 'video.mp4'
+        except Exception as e:
+            print(f"Cobalt API xatosi: {e}")
+
+    # 2-usul: Qolganlar (TikTok, YouTube) yoki zaxira uchun yt-dlp
     ydl_opts = {
         'format': 'best',
         'outtmpl': 'video.mp4',
