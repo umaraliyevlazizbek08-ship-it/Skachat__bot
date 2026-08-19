@@ -1,5 +1,3 @@
-
-aiogram
+flask
 yt-dlp
-requests
-aiohttp
+aiogram
