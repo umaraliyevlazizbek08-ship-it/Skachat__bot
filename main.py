@@ -1,7 +1,6 @@
 import os
 import asyncio
 import sqlite3
-import requests
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
@@ -24,28 +23,11 @@ def add_user(user_id):
     cursor.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
     conn.commit()
 
-# Videolarni yuklash funksiyasi (Instagram uchun API, qolganlar uchun yt-dlp)
+# Videolarni yuklash funksiyasi (yt-dlp orqali Instagram, TikTok, YouTube)
 def download_video(url: str):
     if os.path.exists('video.mp4'):
         os.remove('video.mp4')
 
-    # Agar havola Instagram'niki bo'lsa, API orqali tortamiz
-    if "instagram.com" in url:
-        try:
-            api_url = f"https://apis.davidcyriltech.my.id/instagram?url={url}"
-            response = requests.get(api_url, timeout=15).json()
-            
-            if response.get("status") == 200 and response.get("download_url"):
-                video_url = response["download_url"]
-                vid_data = requests.get(video_url, timeout=20)
-                if vid_data.status_code == 200:
-                    with open('video.mp4', 'wb') as f:
-                        f.write(vid_data.content)
-                    return 'video.mp4'
-        except Exception as e:
-            print(f"Instagram API xatosi: {e}")
-
-    # TikTok, YouTube va boshqalar uchun yt-dlp
     ydl_opts = {
         'format': 'best',
         'outtmpl': 'video.mp4',
